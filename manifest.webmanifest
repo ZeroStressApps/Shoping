@@ -1,0 +1,13 @@
+{
+  "name": "ZeroStress Shoping",
+  "short_name": "Shoping",
+  "description": "Lista de la compra compartida y control de gastos.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f8f8",
+  "theme_color": "#087f8c",
+  "icons": [
+    {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

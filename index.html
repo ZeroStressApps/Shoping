@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#087f8c">
+  <title>ZeroStress Shoping</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    :root { --teal:#087f8c; --teal-dark:#075e66; --mint:#e8f6f3; --ink:#203238; --muted:#65777b; --line:#dce7e8; --bg:#f5f8f8; --white:#fff; --orange:#e69a38; }
+    * { box-sizing:border-box }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif }
+    header { background:linear-gradient(120deg,var(--teal-dark),var(--teal)); color:white; padding:22px max(16px,calc((100vw - 980px)/2)); }
+    header h1 { margin:0; font-size:1.55rem; letter-spacing:.2px }
+    header p { margin:5px 0 0; opacity:.88; font-size:.92rem }
+    main { max-width:980px; margin:0 auto; padding:18px 14px 40px }
+    .tabs { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:14px }
+    .tab { border:1px solid var(--line); background:white; color:var(--ink); border-radius:999px; padding:10px 14px; white-space:nowrap; font-weight:650; cursor:pointer }
+    .tab.active { background:var(--teal); border-color:var(--teal); color:white }
+    .panel { background:white; border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:0 3px 14px #18383d08 }
+    .panel h2 { font-size:1.12rem; margin:0 0 12px }
+    .row { display:flex; gap:9px; align-items:center; flex-wrap:wrap }
+    input,select,button { font:inherit }
+    input[type=text],input[type=number],input[type=date],select { border:1px solid #cbd9db; border-radius:10px; padding:11px 12px; background:white; color:var(--ink); min-width:0 }
+    input[type=text] { flex:1; min-width:150px }
+    button.primary { background:var(--teal); color:white; border:0; border-radius:10px; padding:11px 15px; font-weight:700; cursor:pointer }
+    button.secondary { background:var(--mint); color:var(--teal-dark); border:1px solid #cce8e3; border-radius:10px; padding:9px 12px; cursor:pointer }
+    button.danger { color:#a33b36; background:#fff1ef; border:1px solid #f1d2ce; border-radius:9px; padding:7px 10px; cursor:pointer }
+    .hint { color:var(--muted); font-size:.88rem }
+    .list { display:grid; gap:10px; margin-top:14px }
+    .item { display:flex; align-items:center; gap:12px; border:1px solid var(--line); border-radius:13px; padding:10px; background:#fff }
+    .item img { width:58px; height:58px; border-radius:10px; object-fit:cover; background:#eef4f4 }
+    .item .details { flex:1; min-width:0 }
+    .item .name { font-weight:650; overflow-wrap:anywhere }
+    .item .note { color:var(--muted); font-size:.86rem; overflow-wrap:anywhere }
+    .item.done { opacity:.6 }
+    .item.done .name { text-decoration:line-through }
+    .item input[type=checkbox] { width:20px; height:20px; accent-color:var(--teal); flex-shrink:0 }
+    .empty { text-align:center; padding:24px 12px; color:var(--muted) }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin-bottom:14px }
+    .stat { background:var(--mint); border-radius:13px; padding:13px }
+    .stat .label { color:var(--muted); font-size:.82rem }
+    .stat strong { display:block; font-size:1.35rem; margin-top:3px }
+    .expense { display:flex; justify-content:space-between; align-items:center; gap:12px; border-bottom:1px solid var(--line); padding:12px 0 }
+    .expense:last-child { border-bottom:0 }
+    .expense small { display:block; color:var(--muted) }
+    .hidden { display:none !important }
+    .status { display:inline-flex; align-items:center; gap:6px; background:#fff7e8; color:#80520b; padding:5px 9px; border-radius:999px; font-size:.8rem }
+    .status::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--orange) }
+    .status.online { background:#e8f6ed; color:#24683b }
+    .status.online::before { background:#299b54 }
+    .foot { margin-top:15px; text-align:center; color:var(--muted); font-size:.82rem }
+    @media (max-width:520px) { header { padding:18px 16px } main { padding:13px 10px 30px } .panel { padding:13px } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🛒 ZeroStress Shoping</h1>
+  <p>La compra compartida, sin tener que perseguir mensajes.</p>
+</header>
+<main>
+  <div class="row" style="justify-content:space-between;margin-bottom:12px">
+    <span class="status" id="syncStatus">Modo local · pendiente de Firebase</span>
+    <button class="secondary" id="exportBtn" type="button">Exportar copia</button>
+  </div>
+  <nav class="tabs" aria-label="Secciones">
+    <button class="tab active" data-view="lists">Listas</button>
+    <button class="tab" data-view="expenses">Gastos</button>
+  </nav>
+
+  <section id="listsView">
+    <div class="tabs" id="storeTabs">
+      <button class="tab active" data-store="MERCADONA">MERCADONA</button>
+      <button class="tab" data-store="HIPERBER">HIPERBER</button>
+      <button class="tab" data-store="CARREFOUR">CARREFOUR</button>
+      <button class="tab" data-store="FRUTERÍA">FRUTERÍA 🍊</button>
+    </div>
+    <section class="panel">
+      <h2 id="listTitle">Lista de MERCADONA</h2>
+      <form id="addForm" class="row">
+        <input id="productName" type="text" placeholder="¿Qué falta por comprar?" maxlength="120" required>
+        <input id="productNote" type="text" placeholder="Nota (opcional)" maxlength="160" style="flex:1">
+        <label class="secondary" for="productPhoto" style="cursor:pointer">📷 Foto</label>
+        <input id="productPhoto" type="file" accept="image/*" capture="environment" class="hidden">
+        <button class="primary" type="submit">Añadir</button>
+      </form>
+      <div class="hint" id="photoHint" style="margin-top:8px">Puedes adjuntar una foto para que Frank identifique el producto.</div>
+      <div id="shoppingList" class="list"></div>
+    </section>
+  </section>
+
+  <section id="expensesView" class="hidden">
+    <div class="stats">
+      <div class="stat"><span class="label">Total del mes</span><strong id="monthTotal">0,00 €</strong></div>
+      <div class="stat"><span class="label">Compras registradas</span><strong id="monthCount">0</strong></div>
+    </div>
+    <section class="panel">
+      <h2>Anotar una compra</h2>
+      <form id="expenseForm" class="row">
+        <select id="expenseStore" aria-label="Tienda">
+          <option>MERCADONA</option><option>HIPERBER</option><option>CARREFOUR</option><option>FRUTERÍA</option>
+        </select>
+        <input id="expenseDate" type="date" required>
+        <input id="expenseAmount" type="number" min="0.01" step="0.01" placeholder="Total €" required style="width:120px;flex:1">
+        <button class="primary" type="submit">Guardar gasto</button>
+      </form>
+      <p class="hint">Solo se registra el total del ticket, no hace falta poner precio por producto.</p>
+    </section>
+    <section class="panel" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Histórico de gastos</h2>
+        <input id="monthFilter" type="month" aria-label="Filtrar por mes">
+      </div>
+      <div id="expenseList"></div>
+    </section>
+  </section>
+  <p class="foot">Esta primera base guarda los datos en este dispositivo. La sincronización compartida con Frank se conectará en el siguiente paso mediante Firebase.</p>
+</main>
+<script>
+(() => {
+  const stores = ["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA"];
+  const key = "zerostress-shoping-v1";
+  let data = load();
+  let activeStore = "MERCADONA";
+  let photoData = "";
+  const $ = id => document.getElementById(id);
+  const today = new Date();
+  const isoToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  $("expenseDate").value = isoToday;
+  $("monthFilter").value = isoToday.slice(0,7);
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(key)) || {items:[],expenses:[]}; }
+    catch { return {items:[],expenses:[]}; }
+  }
+  function save() { localStorage.setItem(key, JSON.stringify(data)); }
+  function euro(value) { return Number(value).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  }
+  function renderList() {
+    $("listTitle").textContent = `Lista de ${activeStore}`;
+    const entries = data.items.filter(item => item.store === activeStore);
+    $("shoppingList").innerHTML = entries.length ? entries.map(item => `
+      <article class="item ${item.done ? "done" : ""}">
+        <input type="checkbox" aria-label="Marcar comprado" data-check="${item.id}" ${item.done ? "checked" : ""}>
+        ${item.photo ? `<img src="${item.photo}" alt="Foto de ${escapeHtml(item.name)}">` : ""}
+        <div class="details"><div class="name">${escapeHtml(item.name)}</div>${item.note ? `<div class="note">${escapeHtml(item.note)}</div>` : ""}</div>
+        <button class="danger" type="button" data-delete="${item.id}" aria-label="Eliminar ${escapeHtml(item.name)}">Eliminar</button>
+      </article>`).join("") : `<div class="empty">No hay productos pendientes en esta lista.<br>Un pequeño milagro doméstico.</div>`;
+    $("shoppingList").querySelectorAll("[data-check]").forEach(el => el.addEventListener("change", () => {
+      const item = data.items.find(x => x.id === el.dataset.check); if(item) item.done = el.checked; save(); renderList();
+    }));
+    $("shoppingList").querySelectorAll("[data-delete]").forEach(el => el.addEventListener("click", () => {
+      data.items = data.items.filter(x => x.id !== el.dataset.delete); save(); renderList();
+    }));
+  }
+  function renderExpenses() {
+    const month = $("monthFilter").value;
+    const entries = data.expenses.filter(x => !month || x.date.startsWith(month)).sort((a,b)=>b.date.localeCompare(a.date));
+    $("monthTotal").textContent = euro(entries.reduce((sum,x)=>sum+Number(x.amount),0));
+    $("monthCount").textContent = String(entries.length);
+    $("expenseList").innerHTML = entries.length ? entries.map(x=>`
+      <div class="expense"><div><strong>${escapeHtml(x.store)}</strong><small>${new Date(x.date+"T12:00:00").toLocaleDateString("es-ES")}</small></div><strong>${euro(x.amount)}</strong><button class="danger" data-expense-delete="${x.id}" type="button">Borrar</button></div>`).join("") : `<div class="empty">Todavía no hay gastos registrados para este mes.</div>`;
+    $("expenseList").querySelectorAll("[data-expense-delete]").forEach(el=>el.addEventListener("click",()=>{
+      data.expenses=data.expenses.filter(x=>x.id!==el.dataset.expenseDelete); save(); renderExpenses();
+    }));
+  }
+  $("addForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("productName").value.trim(); if(!name) return;
+    data.items.push({id:crypto.randomUUID(),store:activeStore,name,note:$("productNote").value.trim(),photo:photoData,done:false,createdAt:new Date().toISOString()});
+    save(); $("productName").value=""; $("productNote").value=""; $("productPhoto").value=""; photoData=""; $("photoHint").textContent="Puedes adjuntar una foto para que Frank identifique el producto."; renderList();
+  });
+  $("productPhoto").addEventListener("change", async e => {
+    const file=e.target.files[0]; if(!file) return;
+    if(file.size > 5*1024*1024) { alert("La foto supera 5 MB. Elige una imagen más pequeña."); e.target.value=""; return; }
+    const reader=new FileReader(); reader.onload=()=>{photoData=reader.result; $("photoHint").textContent="Foto preparada: "+file.name;}; reader.readAsDataURL(file);
+  });
+  $("expenseForm").addEventListener("submit",e=>{
+    e.preventDefault(); const amount=Number($("expenseAmount").value); if(!(amount>0)) return;
+    data.expenses.push({id:crypto.randomUUID(),store:$("expenseStore").value,date:$("expenseDate").value,amount});
+    save(); $("expenseAmount").value=""; $("monthFilter").value=$("expenseDate").value.slice(0,7); renderExpenses();
+  });
+  $("monthFilter").addEventListener("change",renderExpenses);
+  document.querySelectorAll("[data-store]").forEach(btn=>btn.addEventListener("click",()=>{
+    activeStore=btn.dataset.store; document.querySelectorAll("[data-store]").forEach(b=>b.classList.toggle("active",b===btn)); renderList();
+  }));
+  document.querySelectorAll("[data-view]").forEach(btn=>btn.addEventListener("click",()=>{
+    const view=btn.dataset.view; document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b===btn));
+    $("listsView").classList.toggle("hidden",view!=="lists"); $("expensesView").classList.toggle("hidden",view!=="expenses");
+    if(view==="expenses") renderExpenses();
+  }));
+  $("exportBtn").addEventListener("click",()=>{
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="zerostress-shoping-copia.json"; a.click(); URL.revokeObjectURL(url);
+  });
+  if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  renderList(); renderExpenses();
+})();
+</script>
+</body>
+</html>
