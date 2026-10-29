@@ -3,15 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#087f8c">
+  <meta name="theme-color" content="#65b9e8">
   <title>ZeroStress Shoping</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <style>
-    :root { --teal:#087f8c; --teal-dark:#075e66; --mint:#e8f6f3; --ink:#203238; --muted:#65777b; --line:#dce7e8; --bg:#f5f8f8; --white:#fff; --orange:#e69a38; }
+    :root { --teal:#65b9e8; --teal-dark:#278bcb; --mint:#dff3fc; --ink:#203238; --muted:#536f7d; --line:#c9e5f2; --bg:#dff3fc; --white:#fff; --orange:#e69a38; }
     * { box-sizing:border-box }
     body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif }
     header { background:linear-gradient(120deg,var(--teal-dark),var(--teal)); color:white; padding:22px max(16px,calc((100vw - 980px)/2)); }
+    .brand { display:flex; align-items:center; gap:12px }
+    .brand-logo { width:66px; height:66px; border-radius:50%; object-fit:cover; border:2px solid #fff9; flex:none }
     header h1 { margin:0; font-size:1.55rem; letter-spacing:.2px }
     header p { margin:5px 0 0; opacity:.88; font-size:.92rem }
     main { max-width:980px; margin:0 auto; padding:18px 14px 40px }
@@ -56,8 +58,8 @@
 </head>
 <body>
 <header>
-  <h1>🛒 ZeroStress Shoping</h1>
-  <p>La compra compartida, sin tener que perseguir mensajes.</p>
+  <div class="brand"><img class="brand-logo" src="logo.png" alt="Logo ZeroStress Shoping"><div><h1>ZeroStress Shoping</h1>
+  <p>La compra compartida, sin tener que perseguir mensajes.</p></div></div>
 </header>
 <main>
   <div class="row" style="justify-content:space-between;margin-bottom:12px">

@@ -1,5 +1,5 @@
-const CACHE = "zerostress-shoping-v1";
-const ASSETS = ["./","./index.html","./manifest.webmanifest","./icon.svg"];
+const CACHE = "zerostress-shoping-v2";
+const ASSETS = ["./","./index.html","./manifest.webmanifest","./icon.svg","./logo.png","./icon-192.png","./icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
   self.skipWaiting();
