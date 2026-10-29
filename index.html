@@ -20,6 +20,9 @@
     .tabs { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:14px }
     .tab { border:1px solid var(--line); background:white; color:var(--ink); border-radius:999px; padding:10px 14px; white-space:nowrap; font-weight:650; cursor:pointer }
     .tab.active { background:var(--teal); border-color:var(--teal); color:white }
+    .store-tab { display:inline-flex; align-items:center; justify-content:center; gap:8px }
+    .store-logo { width:25px; height:25px; flex:none; display:block }
+    .store-tab span { font-size:.88rem; }
     .panel { background:white; border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:0 3px 14px #18383d08 }
     .panel h2 { font-size:1.12rem; margin:0 0 12px }
     .row { display:flex; gap:9px; align-items:center; flex-wrap:wrap }
@@ -73,10 +76,10 @@
 
   <section id="listsView">
     <div class="tabs" id="storeTabs">
-      <button class="tab active" data-store="MERCADONA">MERCADONA</button>
-      <button class="tab" data-store="HIPERBER">HIPERBER</button>
-      <button class="tab" data-store="CARREFOUR">CARREFOUR</button>
-      <button class="tab" data-store="FRUTERÍA">FRUTERÍA 🍊</button>
+      <button class="tab active store-tab" data-store="MERCADONA"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Logo Mercadona"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M8 13h24v14H8z" fill="#00a85a" rx="2"/><path d="M11 16h18M11 19h18M11 22h18" stroke="#f7d84a" stroke-width="2"/><text x="20" y="34" font-size="5" text-anchor="middle" fill="#087844">MERCADONA</text></svg><span>MERCADONA</span></button>
+      <button class="tab store-tab" data-store="HIPERBER"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Logo Hiperber"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M5 28 13 9h8l-8 19z" fill="#f4c928"/><path d="M15 28 23 9h8l-8 19z" fill="#39a64a"/><text x="20" y="35" font-size="7" text-anchor="middle" font-weight="bold" fill="#287c37">H</text></svg><span>HIPERBER</span></button>
+      <button class="tab store-tab" data-store="CARREFOUR"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Logo Carrefour"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M20 4 35 20 20 36 5 20z" fill="#fff" stroke="#164a9a" stroke-width="2"/><path d="M20 7 31 20 20 33 9 20z" fill="#e31d3b"/><path d="M16 13 8 20l8 7h8l-8-7 8-7z" fill="#17479e"/><path d="M24 13 32 20l-8 7h-8l8-7-8-7z" fill="#fff"/></svg><span>CARREFOUR</span></button>
+      <button class="tab store-tab" data-store="FRUTERÍA"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Icono frutería"><circle cx="20" cy="22" r="15" fill="#f49a24"/><path d="M20 8c1-5 7-6 10-3-3 5-7 5-10 3" fill="#3a9a50"/><path d="M20 9c-3-5-8-4-10-1 3 4 7 4 10 1" fill="#5dbb57"/><path d="M7 22h26" stroke="#ffd76a" stroke-width="2"/></svg><span>FRUTERÍA</span></button>
     </div>
     <section class="panel">
       <h2 id="listTitle">Lista de MERCADONA</h2>
