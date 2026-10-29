@@ -55,6 +55,10 @@
     .status::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--orange) }
     .status.online { background:#e8f6ed; color:#24683b }
     .status.online::before { background:#299b54 }
+    .auth-panel { max-width:480px; margin:28px auto; background:#fff; border:1px solid var(--line); border-radius:18px; padding:20px; box-shadow:0 3px 14px #18383d08 }
+    .auth-panel h2 { margin:0 0 12px }
+    .auth-panel input { width:100%; margin:6px 0; }
+    .auth-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:10px }
     .foot { margin-top:15px; text-align:center; color:var(--muted); font-size:.82rem }
     @media (max-width:520px) { header { padding:18px 16px } main { padding:13px 10px 30px } .panel { padding:13px } }
   </style>
@@ -64,7 +68,17 @@
   <div class="brand"><img class="brand-logo" src="logo.png" alt="Logo ZeroStress Shoping"><div><h1>ZeroStress Shoping</h1>
   <p>La compra compartida, sin tener que perseguir mensajes.</p></div></div>
 </header>
-<main>
+<section id="authPanel" class="auth-panel">
+  <h2>Entrar en ZeroStress Shoping</h2>
+  <p class="hint">Inicia sesión con tu cuenta. Laura y Frank tienen los mismos permisos.</p>
+  <form id="authForm">
+    <input id="authEmail" type="email" placeholder="Correo electrónico" autocomplete="username" required>
+    <input id="authPassword" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+    <div class="auth-actions"><button class="primary" type="submit">Iniciar sesión</button><button class="secondary" id="resetPassword" type="button">Recuperar contraseña</button></div>
+  </form>
+  <p class="hint" id="authMessage" role="status"></p>
+</section>
+<main id="appMain" class="hidden">
   <div class="row" style="justify-content:space-between;margin-bottom:12px">
     <span class="status" id="syncStatus">Modo local · pendiente de Firebase</span>
     <button class="secondary" id="exportBtn" type="button">Exportar copia</button>
@@ -120,90 +134,82 @@
       <div id="expenseList"></div>
     </section>
   </section>
-  <p class="foot">Esta primera base guarda los datos en este dispositivo. La sincronización compartida con Frank se conectará en el siguiente paso mediante Firebase.</p>
+  <p class="foot">Listas y gastos compartidos en tiempo real con Laura y Frank.</p>
 </main>
-<script>
-(() => {
-  const stores = ["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA"];
-  const key = "zerostress-shoping-v1";
-  let data = load();
-  let activeStore = "MERCADONA";
-  let photoData = "";
-  const $ = id => document.getElementById(id);
-  const today = new Date();
-  const isoToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
-  $("expenseDate").value = isoToday;
-  $("monthFilter").value = isoToday.slice(0,7);
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(key)) || {items:[],expenses:[]}; }
-    catch { return {items:[],expenses:[]}; }
-  }
-  function save() { localStorage.setItem(key, JSON.stringify(data)); }
-  function euro(value) { return Number(value).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
-  function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-  }
-  function renderList() {
-    $("listTitle").textContent = `Lista de ${activeStore}`;
-    const entries = data.items.filter(item => item.store === activeStore);
-    $("shoppingList").innerHTML = entries.length ? entries.map(item => `
-      <article class="item ${item.done ? "done" : ""}">
-        <input type="checkbox" aria-label="Marcar comprado" data-check="${item.id}" ${item.done ? "checked" : ""}>
-        ${item.photo ? `<img src="${item.photo}" alt="Foto de ${escapeHtml(item.name)}">` : ""}
-        <div class="details"><div class="name">${escapeHtml(item.name)}</div>${item.note ? `<div class="note">${escapeHtml(item.note)}</div>` : ""}</div>
-        <button class="danger" type="button" data-delete="${item.id}" aria-label="Eliminar ${escapeHtml(item.name)}">Eliminar</button>
-      </article>`).join("") : `<div class="empty">No hay productos pendientes en esta lista.<br>Un pequeño milagro doméstico.</div>`;
-    $("shoppingList").querySelectorAll("[data-check]").forEach(el => el.addEventListener("change", () => {
-      const item = data.items.find(x => x.id === el.dataset.check); if(item) item.done = el.checked; save(); renderList();
-    }));
-    $("shoppingList").querySelectorAll("[data-delete]").forEach(el => el.addEventListener("click", () => {
-      data.items = data.items.filter(x => x.id !== el.dataset.delete); save(); renderList();
-    }));
-  }
-  function renderExpenses() {
-    const month = $("monthFilter").value;
-    const entries = data.expenses.filter(x => !month || x.date.startsWith(month)).sort((a,b)=>b.date.localeCompare(a.date));
-    $("monthTotal").textContent = euro(entries.reduce((sum,x)=>sum+Number(x.amount),0));
-    $("monthCount").textContent = String(entries.length);
-    $("expenseList").innerHTML = entries.length ? entries.map(x=>`
-      <div class="expense"><div><strong>${escapeHtml(x.store)}</strong><small>${new Date(x.date+"T12:00:00").toLocaleDateString("es-ES")}</small></div><strong>${euro(x.amount)}</strong><button class="danger" data-expense-delete="${x.id}" type="button">Borrar</button></div>`).join("") : `<div class="empty">Todavía no hay gastos registrados para este mes.</div>`;
-    $("expenseList").querySelectorAll("[data-expense-delete]").forEach(el=>el.addEventListener("click",()=>{
-      data.expenses=data.expenses.filter(x=>x.id!==el.dataset.expenseDelete); save(); renderExpenses();
-    }));
-  }
-  $("addForm").addEventListener("submit", e => {
-    e.preventDefault();
-    const name = $("productName").value.trim(); if(!name) return;
-    data.items.push({id:crypto.randomUUID(),store:activeStore,name,note:$("productNote").value.trim(),photo:photoData,done:false,createdAt:new Date().toISOString()});
-    save(); $("productName").value=""; $("productNote").value=""; $("productPhoto").value=""; photoData=""; $("photoHint").textContent="Puedes adjuntar una foto para que Frank identifique el producto."; renderList();
-  });
-  $("productPhoto").addEventListener("change", async e => {
-    const file=e.target.files[0]; if(!file) return;
-    if(file.size > 5*1024*1024) { alert("La foto supera 5 MB. Elige una imagen más pequeña."); e.target.value=""; return; }
-    const reader=new FileReader(); reader.onload=()=>{photoData=reader.result; $("photoHint").textContent="Foto preparada: "+file.name;}; reader.readAsDataURL(file);
-  });
-  $("expenseForm").addEventListener("submit",e=>{
-    e.preventDefault(); const amount=Number($("expenseAmount").value); if(!(amount>0)) return;
-    data.expenses.push({id:crypto.randomUUID(),store:$("expenseStore").value,date:$("expenseDate").value,amount});
-    save(); $("expenseAmount").value=""; $("monthFilter").value=$("expenseDate").value.slice(0,7); renderExpenses();
-  });
-  $("monthFilter").addEventListener("change",renderExpenses);
-  document.querySelectorAll("[data-store]").forEach(btn=>btn.addEventListener("click",()=>{
-    activeStore=btn.dataset.store; document.querySelectorAll("[data-store]").forEach(b=>b.classList.toggle("active",b===btn)); renderList();
+const firebaseConfig = {
+  apiKey: "AIzaSyD5NnGL-AWujB-MhvrxQ2JJp5t4SNHsVsM",
+  authDomain: "zerostress-shoping.firebaseapp.com",
+  projectId: "zerostress-shoping",
+  storageBucket: "zerostress-shoping.firebasestorage.app",
+  messagingSenderId: "160574986772",
+  appId: "1:160574986772:web:0f56fb18d759716c7e6501",
+  measurementId: "G-28QQFNQ92N"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+try { await enableIndexedDbPersistence(db); } catch(e) { console.info("Firestore offline cache not enabled in this browser", e.code); }
+const $ = id => document.getElementById(id);
+const stores = ["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA"];
+let items = [], expenses = [], activeStore = "MERCADONA", photoData = "", stopItems = null, stopExpenses = null;
+const today = new Date();
+const isoToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+$("expenseDate").value = isoToday; $("monthFilter").value = isoToday.slice(0,7);
+function euro(value) { return Number(value).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
+function escapeHtml(value) { return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
+function setStatus(text, online=false) { const el=$("syncStatus"); el.textContent=text; el.classList.toggle("online",online); }
+function renderList() {
+  $("listTitle").textContent = `Lista de ${activeStore}`;
+  const entries = items.filter(item => item.store === activeStore);
+  $("shoppingList").innerHTML = entries.length ? entries.map(item => `
+    <article class="item ${item.done ? "done" : ""}">
+      <input type="checkbox" aria-label="Marcar comprado" data-check="${item.id}" ${item.done ? "checked" : ""}>
+      ${item.photo ? `<img src="${item.photo}" alt="Foto de ${escapeHtml(item.name)}">` : ""}
+      <div class="details"><div class="name">${escapeHtml(item.name)}</div>${item.note ? `<div class="note">${escapeHtml(item.note)}</div>` : ""}</div>
+      <button class="danger" type="button" data-delete="${item.id}" aria-label="Eliminar ${escapeHtml(item.name)}">Eliminar</button>
+    </article>`).join("") : `<div class="empty">No hay productos en esta lista.<br>Un pequeño milagro doméstico.</div>`;
+  $("shoppingList").querySelectorAll("[data-check]").forEach(el=>el.addEventListener("change",async()=>{
+    try { await updateDoc(doc(db,"shoppingItems",el.dataset.check),{done:el.checked,updatedAt:serverTimestamp(),updatedBy:auth.currentUser.uid}); } catch(e){showError(e);}
   }));
-  document.querySelectorAll("[data-view]").forEach(btn=>btn.addEventListener("click",()=>{
-    const view=btn.dataset.view; document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b===btn));
-    $("listsView").classList.toggle("hidden",view!=="lists"); $("expensesView").classList.toggle("hidden",view!=="expenses");
-    if(view==="expenses") renderExpenses();
+  $("shoppingList").querySelectorAll("[data-delete]").forEach(el=>el.addEventListener("click",async()=>{
+    try { await deleteDoc(doc(db,"shoppingItems",el.dataset.delete)); } catch(e){showError(e);}
   }));
-  $("exportBtn").addEventListener("click",()=>{
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="zerostress-shoping-copia.json"; a.click(); URL.revokeObjectURL(url);
-  });
-  if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-  renderList(); renderExpenses();
-})();
+}
+function renderExpenses() {
+  const month=$("monthFilter").value;
+  const entries=expenses.filter(x=>!month||String(x.date||"").startsWith(month)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  $("monthTotal").textContent=euro(entries.reduce((sum,x)=>sum+Number(x.amount),0));
+  $("monthCount").textContent=String(entries.length);
+  $("expenseList").innerHTML=entries.length?entries.map(x=>`<div class="expense"><div><strong>${escapeHtml(x.store)}</strong><small>${new Date(x.date+"T12:00:00").toLocaleDateString("es-ES")}</small></div><strong>${euro(x.amount)}</strong><button class="danger" data-expense-delete="${x.id}" type="button">Borrar</button></div>`).join(""):`<div class="empty">Todavía no hay gastos registrados para este mes.</div>`;
+  $("expenseList").querySelectorAll("[data-expense-delete]").forEach(el=>el.addEventListener("click",async()=>{try{await deleteDoc(doc(db,"shoppingExpenses",el.dataset.expenseDelete));}catch(e){showError(e);}}));
+}
+function showError(e){ console.error(e); alert("No se ha podido guardar el cambio. Comprueba tu conexión y vuelve a intentarlo. Detalle: "+(e.message||e.code||"error")); }
+function watchData(){
+  stopItems?.(); stopExpenses?.();
+  stopItems=onSnapshot(collection(db,"shoppingItems"),snap=>{items=snap.docs.map(d=>({id:d.id,...d.data()}));renderList();setStatus("Sincronizado · Laura y Frank",true);},e=>{setStatus("Error de sincronización");showError(e);});
+  stopExpenses=onSnapshot(collection(db,"shoppingExpenses"),snap=>{expenses=snap.docs.map(d=>({id:d.id,...d.data()}));renderExpenses();},e=>showError(e));
+}
+onAuthStateChanged(auth,user=>{
+  if(user){$("authPanel").classList.add("hidden");$("appMain").classList.remove("hidden");setStatus("Conectando…");watchData();}
+  else {stopItems?.();stopExpenses?.();items=[];expenses=[];$("appMain").classList.add("hidden");$("authPanel").classList.remove("hidden");setStatus("Sesión cerrada");}
+});
+$("authForm").addEventListener("submit",async e=>{e.preventDefault();$("authMessage").textContent="Iniciando sesión…";try{await signInWithEmailAndPassword(auth,$("authEmail").value.trim(),$("authPassword").value);$("authMessage").textContent="";}catch(err){$("authMessage").textContent="No se ha podido iniciar sesión. Revisa el correo y la contraseña.";console.error(err);}});
+$("resetPassword").addEventListener("click",async()=>{const email=$("authEmail").value.trim();if(!email){$("authMessage").textContent="Escribe primero tu correo electrónico.";return;}try{await sendPasswordResetEmail(auth,email);$("authMessage").textContent="Te hemos enviado un correo para recuperar la contraseña.";}catch(e){$("authMessage").textContent="No se ha podido enviar el correo. Comprueba la dirección.";}});
+// A visible sign-out control is added beside the sync status after authentication.
+const logout=document.createElement("button");logout.className="secondary";logout.type="button";logout.textContent="Cerrar sesión";logout.addEventListener("click",()=>signOut(auth));$("syncStatus").parentElement.appendChild(logout);
+$("addForm").addEventListener("submit",async e=>{e.preventDefault();const name=$("productName").value.trim();if(!name||!auth.currentUser)return;try{await addDoc(collection(db,"shoppingItems"),{store:activeStore,name,note:$("productNote").value.trim(),photo:photoData,done:false,createdAt:new Date().toISOString(),createdBy:auth.currentUser.uid,updatedAt:serverTimestamp()});$("productName").value="";$("productNote").value="";$("productPhoto").value="";photoData="";$("photoHint").textContent="Puedes adjuntar una foto para identificar el producto.";}catch(err){showError(err);}});
+$("productPhoto").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;if(file.size>5*1024*1024){alert("La foto supera 5 MB. Elige una imagen más pequeña.");e.target.value="";return;}const reader=new FileReader();reader.onload=()=>{photoData=reader.result;$("photoHint").textContent="Foto preparada: "+file.name;};reader.readAsDataURL(file);});
+$("expenseForm").addEventListener("submit",async e=>{e.preventDefault();const amount=Number($("expenseAmount").value);if(!(amount>0)||!auth.currentUser)return;try{await addDoc(collection(db,"shoppingExpenses"),{store:$("expenseStore").value,date:$("expenseDate").value,amount,createdAt:serverTimestamp(),createdBy:auth.currentUser.uid});$("expenseAmount").value="";$("monthFilter").value=$("expenseDate").value.slice(0,7);}catch(err){showError(err);}});
+$("monthFilter").addEventListener("change",renderExpenses);
+document.querySelectorAll("[data-store]").forEach(btn=>btn.addEventListener("click",()=>{activeStore=btn.dataset.store;document.querySelectorAll("[data-store]").forEach(b=>b.classList.toggle("active",b===btn));renderList();}));
+document.querySelectorAll("[data-view]").forEach(btn=>btn.addEventListener("click",()=>{const view=btn.dataset.view;document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b===btn));$("listsView").classList.toggle("hidden",view!=="lists");$("expensesView").classList.toggle("hidden",view!=="expenses");if(view==="expenses")renderExpenses();}));
+$("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify({items,expenses},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zerostress-shoping-copia.json";a.click();URL.revokeObjectURL(url);});
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 </script>
 </body>
 </html>

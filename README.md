@@ -19,3 +19,7 @@ Esta versión guarda la información en el navegador/dispositivo actual. **Todav
 El siguiente paso es configurar Firebase Authentication y Firestore, definir usuarios autorizados y sincronizar listas y gastos. Las fotos compartidas necesitarán almacenamiento remoto (Firebase Storage u otra solución segura); en esta base se guardan localmente como datos de imagen.
 
 No publiques credenciales privadas ni reglas abiertas de Firebase. Las claves de configuración web de Firebase no son contraseñas, pero deben ir acompañadas de reglas de seguridad correctas.
+
+
+## Firebase compartido
+Esta versión usa Firebase Authentication (correo y contraseña) y Cloud Firestore. Proyecto: zerostress-shoping. Ambos usuarios autorizados tienen las mismas funciones. Publicar en GitHub Pages mediante HTTPS.
