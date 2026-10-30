@@ -1,4 +1,4 @@
-const CACHE = "zerostress-shoping-firebase-v1";
+const CACHE = "zerostress-shoping-personal-v2-share-image";
 const ASSETS = ["./","./index.html","./manifest.webmanifest","./icon.svg","./logo.png","./icon-192.png","./icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));

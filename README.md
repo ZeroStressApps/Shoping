@@ -6,7 +6,7 @@ App de lista de la compra de uso personal, sin inicio de sesión ni conexión a 
 - Añade productos por tienda, notas y fotos.
 - Marca productos como comprados o elimínalos.
 - Registra gastos y consulta el histórico mensual.
-- **Compartir lista** prepara el texto de los productos pendientes de la tienda seleccionada para enviarlo por WhatsApp u otra aplicación a Frank.
+- **Compartir lista (imagen)** crea una imagen PNG de la lista pendiente, incluyendo las fotos de los productos. En móviles compatibles abre el menú nativo para enviarla por WhatsApp; si no, descarga el PNG para adjuntarlo manualmente.
 - **Exportar copia** descarga un JSON de respaldo.
 
 ## Datos

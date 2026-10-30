@@ -67,8 +67,9 @@
 <main id="appMain">
   <div class="row" style="justify-content:space-between;margin-bottom:12px">
     <span class="status online" id="syncStatus">Guardado en este dispositivo</span>
-    <button class="secondary" id="shareBtn" type="button">Descargar lista para WhatsApp</button><button class="secondary" id="exportBtn" type="button">Exportar copia</button>
+    <button class="secondary" id="shareBtn" type="button">Compartir lista (imagen)</button><button class="secondary" id="exportBtn" type="button">Exportar copia</button>
   </div>
+  <p class="hint" id="shareHint" aria-live="polite" style="margin:0 0 10px"></p>
   <nav class="tabs" aria-label="Secciones">
     <button class="tab active" data-view="lists">Listas</button>
     <button class="tab" data-view="expenses">Gastos</button>
@@ -161,7 +162,66 @@ $("monthFilter").addEventListener("change",renderExpenses);
 document.querySelectorAll("[data-store]").forEach(btn=>btn.addEventListener("click",()=>{activeStore=btn.dataset.store;document.querySelectorAll("[data-store]").forEach(b=>b.classList.toggle("active",b===btn));renderList();}));
 document.querySelectorAll("[data-view]").forEach(btn=>btn.addEventListener("click",()=>{const view=btn.dataset.view;document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b===btn));$("listsView").classList.toggle("hidden",view!=="lists");$("expensesView").classList.toggle("hidden",view!=="expenses");if(view==="expenses")renderExpenses();}));
 $("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify({items,expenses},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zerostress-shoping-copia.json";a.click();URL.revokeObjectURL(url);});
-$("shareBtn").addEventListener("click",()=>{const entries=items.filter(x=>x.store===activeStore&&!x.done);const text=`ZeroStress Shoping · ${activeStore}\nFecha: ${new Date().toLocaleDateString("es-ES")}\n\n`+(entries.length?entries.map(x=>`☐ ${x.name}${x.note?` (${x.note})`:""}`).join("\n"):"Lista vacía");const blob=new Blob([text],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`Lista_${activeStore.toLowerCase()}_${new Date().toISOString().slice(0,10)}.txt`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+function roundedRect(ctx,x,y,w,h,r,fill,stroke){
+  const radius=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+radius,y);ctx.lineTo(x+w-radius,y);ctx.arcTo(x+w,y,x+w,y+radius,radius);ctx.lineTo(x+w,y+h-radius);ctx.arcTo(x+w,y+h,x+w-radius,y+h,radius);ctx.lineTo(x+radius,y+h);ctx.arcTo(x,y+h,x,y+h-radius,radius);ctx.lineTo(x,y+radius);ctx.arcTo(x,y,x+radius,y,radius);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}
+}
+function loadCanvasImage(src){return new Promise(resolve=>{if(!src)return resolve(null);const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>resolve(null);img.src=src;});}
+function coverImage(ctx,img,x,y,w,h){
+  const scale=Math.max(w/img.width,h/img.height),sw=w/scale,sh=h/scale,sx=(img.width-sw)/2,sy=(img.height-sh)/2;
+  ctx.save();roundedRect(ctx,x,y,w,h,16,null,null);ctx.clip();ctx.drawImage(img,sx,sy,sw,sh,x,y,w,h);ctx.restore();
+}
+function wrapCanvasText(ctx,text,maxWidth,maxLines=2){
+  const words=String(text||"").split(/\s+/).filter(Boolean),lines=[];let line="";
+  for(const word of words){const test=line?line+" "+word:word;if(ctx.measureText(test).width<=maxWidth||!line){line=test;}else{lines.push(line);line=word;if(lines.length>=maxLines-1)break;}}
+  if(line&&lines.length<maxLines)lines.push(line);
+  const consumed=lines.join(" ").length; if(String(text||"").length>consumed&&lines.length){let last=lines[lines.length-1];while(last&&ctx.measureText(last+"…").width>maxWidth)last=last.slice(0,-1);lines[lines.length-1]=last+"…";}
+  return lines;
+}
+async function buildShoppingImage(entries){
+  const width=1080,rowH=142,headerH=300,footerH=92,padding=54;
+  const height=Math.max(640,headerH+entries.length*rowH+footerH);
+  // Keep the generated bitmap within common mobile canvas limits.
+  if(height>15000)throw new Error("La lista es demasiado larga para crear una sola imagen.");
+  const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#eaf7fd";ctx.fillRect(0,0,width,height);
+  ctx.fillStyle="#278bcb";ctx.fillRect(0,0,width,headerH);
+  const logo=await loadCanvasImage("./logo.png");if(logo){ctx.save();ctx.beginPath();ctx.arc(135,136,82,0,Math.PI*2);ctx.clip();ctx.drawImage(logo,53,54,164,164);ctx.restore();}
+  ctx.fillStyle="#ffffff";ctx.font="700 42px system-ui, sans-serif";ctx.fillText("LISTA DE LA COMPRA",250,100);
+  ctx.font="700 52px system-ui, sans-serif";let storeName=activeStore;while(ctx.measureText(storeName).width>740&&storeName.length>8)storeName=storeName.slice(0,-2)+"…";ctx.fillText(storeName,250,170);
+  ctx.font="28px system-ui, sans-serif";ctx.fillStyle="#eaf7fd";ctx.fillText(new Date().toLocaleDateString("es-ES"),250,225);
+  ctx.font="24px system-ui, sans-serif";ctx.fillText(`${entries.length} ${entries.length===1?"producto pendiente":"productos pendientes"}`,250,265);
+  let y=headerH+20;
+  for(let i=0;i<entries.length;i++){
+    const item=entries[i];roundedRect(ctx,padding,y,width-padding*2,rowH-14,22,"#ffffff","#d1eaf6");
+    const photo=await loadCanvasImage(item.photo);
+    if(photo)coverImage(ctx,photo,76,y+17,108,108);else{roundedRect(ctx,76,y+17,108,108,16,"#eaf7fd","#c8e5f2");ctx.fillStyle="#278bcb";ctx.font="48px system-ui, sans-serif";ctx.textAlign="center";ctx.fillText("□",130,y+87);ctx.textAlign="left";}
+    ctx.fillStyle="#203238";ctx.font="700 32px system-ui, sans-serif";const nameLines=wrapCanvasText(ctx,item.name,690,2);let ty=y+54;for(const line of nameLines){ctx.fillText(line,220,ty);ty+=38;}
+    if(item.note){ctx.fillStyle="#536f7d";ctx.font="24px system-ui, sans-serif";const note=wrapCanvasText(ctx,item.note,690,1)[0]||"";ctx.fillText(note,220,Math.min(y+112,ty+8));}
+    ctx.strokeStyle="#278bcb";ctx.lineWidth=4;roundedRect(ctx,940,y+48,42,42,9,null,"#278bcb");
+    y+=rowH;
+  }
+  ctx.fillStyle="#536f7d";ctx.font="22px system-ui, sans-serif";ctx.textAlign="center";ctx.fillText("Preparada con ZeroStress Shoping",width/2,height-36);ctx.textAlign="left";
+  return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("No se pudo crear la imagen.")),"image/png"));
+}
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}
+$("shareBtn").addEventListener("click",async()=>{
+  const btn=$("shareBtn"),hint=$("shareHint"),entries=items.filter(x=>x.store===activeStore&&!x.done);
+  btn.disabled=true;btn.textContent="Preparando imagen…";hint.textContent="Incluyendo las fotos de los productos en la lista.";
+  try{
+    const blob=await buildShoppingImage(entries),date=new Date().toISOString().slice(0,10),safeStore=activeStore.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi,"_");
+    const file=new File([blob],`Lista_${safeStore}_${date}.png`,{type:"image/png"});
+    let canShareImage=false;try{canShareImage=!!(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]}));}catch(_){canShareImage=false;}
+    if(canShareImage){
+      await navigator.share({files:[file],title:`Lista de ${activeStore}`,text:`Lista de la compra · ${activeStore}`});
+      hint.textContent="Imagen lista para compartir. Elige WhatsApp en el menú de compartir.";
+    }else{
+      downloadBlob(blob,file.name);hint.textContent="Imagen descargada. Adjunta el PNG a WhatsApp para que Frank vea los productos y sus fotos.";
+    }
+  }catch(err){
+    if(err&&err.name==="AbortError"){hint.textContent="Compartición cancelada.";}else{hint.textContent="No se pudo preparar la imagen. Prueba con una lista más corta o exporta una copia.";console.error(err);}
+  }finally{btn.disabled=false;btn.textContent="Compartir lista (imagen)";}
+});
 load();renderList();renderExpenses();
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 </script>
