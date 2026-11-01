@@ -1,4 +1,4 @@
-const CACHE = "zerostress-shoping-personal-v6-order-number";
+const CACHE = "zerostress-shoping-personal-v3-custom-stores-alpha";
 const ASSETS = ["./","./index.html","./manifest.webmanifest","./icon.svg","./logo.png","./icon-192.png","./icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
