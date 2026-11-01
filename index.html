@@ -137,22 +137,27 @@ function load(){try{const data=JSON.parse(localStorage.getItem("zerostress-shopi
 function renderList() {
   $("listTitle").textContent = `Lista de ${activeStore}`;
   const tabs=$("storeTabs");
-  tabs.querySelectorAll("[data-store]").forEach(b=>b.remove());
+  tabs.querySelectorAll(".store-tab-group").forEach(group=>group.remove());
   stores.forEach((store,index)=>{
     const group=document.createElement("div");
     group.className="store-tab-group";
-    group.style.cssText="display:inline-flex;align-items:center;gap:2px;flex-shrink:0";
+    group.style.cssText="display:inline-flex;align-items:center;gap:6px;flex-shrink:0";
+    const order=document.createElement("input");
+    order.type="number";order.min="1";order.max=String(stores.length);order.step="1";order.value=String(index+1);
+    order.title="Posición de la lista";order.setAttribute("aria-label","Orden de "+store);
+    order.style.cssText="width:44px;padding:5px 3px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-size:13px";
+    order.addEventListener("change",()=>{
+      let position=Number.parseInt(order.value,10);
+      if(!Number.isFinite(position))position=index+1;
+      position=Math.max(1,Math.min(stores.length,position));
+      const current=stores.indexOf(store);
+      stores.splice(current,1);
+      stores.splice(position-1,0,store);
+      save();renderList();
+    });
     const b=document.createElement("button");b.type="button";b.className="tab store-tab"+(store===activeStore?" active":"");b.dataset.store=store;b.textContent=store;
     b.addEventListener("click",()=>{activeStore=store;renderList();});
-    const move=document.createElement("span");
-    move.style.cssText="display:inline-flex;flex-direction:column;gap:1px";
-    const up=document.createElement("button");up.type="button";up.textContent="‹";up.title="Mover lista a la izquierda";up.setAttribute("aria-label","Mover "+store+" a la izquierda");up.disabled=index===0;
-    up.style.cssText="padding:0 5px;min-height:17px;line-height:14px;font-size:14px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;cursor:pointer";
-    const down=document.createElement("button");down.type="button";down.textContent="›";down.title="Mover lista a la derecha";down.setAttribute("aria-label","Mover "+store+" a la derecha");down.disabled=index===stores.length-1;
-    down.style.cssText=up.style.cssText;
-    up.addEventListener("click",()=>{if(index>0){[stores[index-1],stores[index]]=[stores[index],stores[index-1]];save();renderList();}});
-    down.addEventListener("click",()=>{if(index<stores.length-1){[stores[index+1],stores[index]]=[stores[index],stores[index+1]];save();renderList();}});
-    move.append(up,down);group.append(b,move);tabs.insertBefore(group,$("addStoreBtn"));
+    group.append(order,b);tabs.insertBefore(group,$("addStoreBtn"));
   });
   $("expenseStore").innerHTML=stores.map(store=>`<option>${escapeHtml(store)}</option>`).join("");
   const entries = items.filter(item => item.store === activeStore).sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:"base"}));
