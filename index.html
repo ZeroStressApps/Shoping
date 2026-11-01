@@ -138,9 +138,21 @@ function renderList() {
   $("listTitle").textContent = `Lista de ${activeStore}`;
   const tabs=$("storeTabs");
   tabs.querySelectorAll("[data-store]").forEach(b=>b.remove());
-  stores.forEach(store=>{
+  stores.forEach((store,index)=>{
+    const group=document.createElement("div");
+    group.className="store-tab-group";
+    group.style.cssText="display:inline-flex;align-items:center;gap:2px;flex-shrink:0";
     const b=document.createElement("button");b.type="button";b.className="tab store-tab"+(store===activeStore?" active":"");b.dataset.store=store;b.textContent=store;
-    b.addEventListener("click",()=>{activeStore=store;renderList();});tabs.insertBefore(b,$("addStoreBtn"));
+    b.addEventListener("click",()=>{activeStore=store;renderList();});
+    const move=document.createElement("span");
+    move.style.cssText="display:inline-flex;flex-direction:column;gap:1px";
+    const up=document.createElement("button");up.type="button";up.textContent="‹";up.title="Mover lista a la izquierda";up.setAttribute("aria-label","Mover "+store+" a la izquierda");up.disabled=index===0;
+    up.style.cssText="padding:0 5px;min-height:17px;line-height:14px;font-size:14px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;cursor:pointer";
+    const down=document.createElement("button");down.type="button";down.textContent="›";down.title="Mover lista a la derecha";down.setAttribute("aria-label","Mover "+store+" a la derecha");down.disabled=index===stores.length-1;
+    down.style.cssText=up.style.cssText;
+    up.addEventListener("click",()=>{if(index>0){[stores[index-1],stores[index]]=[stores[index],stores[index-1]];save();renderList();}});
+    down.addEventListener("click",()=>{if(index<stores.length-1){[stores[index+1],stores[index]]=[stores[index],stores[index+1]];save();renderList();}});
+    move.append(up,down);group.append(b,move);tabs.insertBefore(group,$("addStoreBtn"));
   });
   $("expenseStore").innerHTML=stores.map(store=>`<option>${escapeHtml(store)}</option>`).join("");
   const entries = items.filter(item => item.store === activeStore).sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:"base"}));
@@ -162,7 +174,7 @@ function renderExpenses() {
   $("expenseList").innerHTML=entries.length?entries.map(x=>`<div class="expense"><div><strong>${escapeHtml(x.store)}</strong><small>${new Date(x.date+"T12:00:00").toLocaleDateString("es-ES")}</small></div><strong>${euro(x.amount)}</strong><button class="danger" data-expense-delete="${x.id}" type="button">Borrar</button></div>`).join(""):`<div class="empty">Todavía no hay gastos registrados para este mes.</div>`;
   $("expenseList").querySelectorAll("[data-expense-delete]").forEach(el=>el.addEventListener("click",()=>{expenses=expenses.filter(x=>x.id!==el.dataset.expenseDelete);save();renderExpenses();}));
 }
-$("addStoreBtn").addEventListener("click",()=>{const name=prompt("Nombre de la nueva lista o tienda:");if(!name)return;const store=name.trim().toLocaleUpperCase("es");if(!store)return;if(stores.some(x=>x.toLocaleLowerCase("es")===store.toLocaleLowerCase("es"))){alert("Esa lista ya existe.");return;}stores.push(store);stores.sort((a,b)=>a.localeCompare(b,"es",{sensitivity:"base"}));activeStore=store;save();renderList();});
+$("addStoreBtn").addEventListener("click",()=>{const name=prompt("Nombre de la nueva lista o tienda:");if(!name)return;const store=name.trim().toLocaleUpperCase("es");if(!store)return;if(stores.some(x=>x.toLocaleLowerCase("es")===store.toLocaleLowerCase("es"))){alert("Esa lista ya existe.");return;}stores.push(store);activeStore=store;save();renderList();});
 $("addForm").addEventListener("submit",e=>{e.preventDefault();const name=$("productName").value.trim();if(!name)return;items.push({id:crypto.randomUUID(),store:activeStore,name,note:$("productNote").value.trim(),photo:photoData,done:false,createdAt:new Date().toISOString()});$("productName").value="";$("productNote").value="";$("productPhoto").value="";photoData="";$("photoHint").textContent="Puedes adjuntar una foto para identificar el producto.";save();renderList();});
 $("productPhoto").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;if(file.size>5*1024*1024){alert("La foto supera 5 MB. Elige una imagen más pequeña.");e.target.value="";return;}const reader=new FileReader();reader.onload=()=>{photoData=reader.result;$("photoHint").textContent="Foto preparada: "+file.name;};reader.readAsDataURL(file);});
 $("expenseForm").addEventListener("submit",e=>{e.preventDefault();const amount=Number($("expenseAmount").value);if(!(amount>0))return;expenses.push({id:crypto.randomUUID(),store:$("expenseStore").value,date:$("expenseDate").value,amount});$("expenseAmount").value="";$("monthFilter").value=$("expenseDate").value.slice(0,7);save();renderExpenses();});
