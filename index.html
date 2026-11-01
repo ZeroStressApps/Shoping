@@ -67,7 +67,7 @@
 <main id="appMain">
   <div class="row" style="justify-content:space-between;margin-bottom:12px">
     <span class="status online" id="syncStatus">Guardado en este dispositivo</span>
-    <button class="secondary" id="shareBtn" type="button">Compartir lista (imagen)</button><button class="secondary" id="exportBtn" type="button">Exportar copia</button>
+    <button class="secondary" id="shareBtn" type="button">Compartir lista (imagen)</button>
   </div>
   <p class="hint" id="shareHint" aria-live="polite" style="margin:0 0 10px"></p>
   <nav class="tabs" aria-label="Secciones">
@@ -81,6 +81,7 @@
       <button class="tab store-tab" data-store="HIPERBER"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Logo Hiperber"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M5 28 13 9h8l-8 19z" fill="#f4c928"/><path d="M15 28 23 9h8l-8 19z" fill="#39a64a"/><text x="20" y="35" font-size="7" text-anchor="middle" font-weight="bold" fill="#287c37">H</text></svg><span>HIPERBER</span></button>
       <button class="tab store-tab" data-store="CARREFOUR"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Logo Carrefour"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M20 4 35 20 20 36 5 20z" fill="#fff" stroke="#164a9a" stroke-width="2"/><path d="M20 7 31 20 20 33 9 20z" fill="#e31d3b"/><path d="M16 13 8 20l8 7h8l-8-7 8-7z" fill="#17479e"/><path d="M24 13 32 20l-8 7h-8l8-7-8-7z" fill="#fff"/></svg><span>CARREFOUR</span></button>
       <button class="tab store-tab" data-store="FRUTERÍA"><svg class="store-logo" viewBox="0 0 40 40" role="img" aria-label="Icono frutería"><circle cx="20" cy="22" r="15" fill="#f49a24"/><path d="M20 8c1-5 7-6 10-3-3 5-7 5-10 3" fill="#3a9a50"/><path d="M20 9c-3-5-8-4-10-1 3 4 7 4 10 1" fill="#5dbb57"/><path d="M7 22h26" stroke="#ffd76a" stroke-width="2"/></svg><span>FRUTERÍA</span></button>
+      <button class="tab" id="addStoreBtn" type="button">＋ Añadir lista</button>
     </div>
     <section class="panel">
       <h2 id="listTitle">Lista de MERCADONA</h2>
@@ -126,17 +127,24 @@
 <script>
 const $ = id => document.getElementById(id);
 const stores = ["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA"];
-let items = [], expenses = [], activeStore = "MERCADONA", photoData = "";
+let items = [], expenses = [], stores = ["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA"], activeStore = "MERCADONA", photoData = "";
 const today = new Date();
 const isoToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 $("expenseDate").value = isoToday; $("monthFilter").value = isoToday.slice(0,7);
 function euro(value) { return Number(value).toLocaleString("es-ES",{style:"currency",currency:"EUR"}); }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
-function save(){localStorage.setItem("zerostress-shoping-personal",JSON.stringify({items,expenses}));$("syncStatus").textContent="Guardado en este dispositivo";}
-function load(){try{const data=JSON.parse(localStorage.getItem("zerostress-shoping-personal")||"{}");items=Array.isArray(data.items)?data.items:[];expenses=Array.isArray(data.expenses)?data.expenses:[];}catch{items=[];expenses=[];}}
+function save(){localStorage.setItem("zerostress-shoping-personal",JSON.stringify({items,expenses,stores}));$("syncStatus").textContent="Guardado en este dispositivo";}
+function load(){try{const data=JSON.parse(localStorage.getItem("zerostress-shoping-personal")||"{}");items=Array.isArray(data.items)?data.items:[];expenses=Array.isArray(data.expenses)?data.expenses:[];stores=Array.isArray(data.stores)?Array.from(new Set(["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA",...data.stores])):["MERCADONA","HIPERBER","CARREFOUR","FRUTERÍA"];}catch{items=[];expenses=[];}}
 function renderList() {
   $("listTitle").textContent = `Lista de ${activeStore}`;
-  const entries = items.filter(item => item.store === activeStore);
+  const tabs=$("storeTabs");
+  tabs.querySelectorAll("[data-store]").forEach(b=>b.remove());
+  stores.forEach(store=>{
+    const b=document.createElement("button");b.type="button";b.className="tab store-tab"+(store===activeStore?" active":"");b.dataset.store=store;b.textContent=store;
+    b.addEventListener("click",()=>{activeStore=store;renderList();});tabs.insertBefore(b,$("addStoreBtn"));
+  });
+  $("expenseStore").innerHTML=stores.map(store=>`<option>${escapeHtml(store)}</option>`).join("");
+  const entries = items.filter(item => item.store === activeStore).sort((a,b)=>a.name.localeCompare(b.name,"es",{sensitivity:"base"}));
   $("shoppingList").innerHTML = entries.length ? entries.map(item => `
     <article class="item ${item.done ? "done" : ""}">
       <input type="checkbox" aria-label="Marcar comprado" data-check="${item.id}" ${item.done ? "checked" : ""}>
@@ -155,13 +163,13 @@ function renderExpenses() {
   $("expenseList").innerHTML=entries.length?entries.map(x=>`<div class="expense"><div><strong>${escapeHtml(x.store)}</strong><small>${new Date(x.date+"T12:00:00").toLocaleDateString("es-ES")}</small></div><strong>${euro(x.amount)}</strong><button class="danger" data-expense-delete="${x.id}" type="button">Borrar</button></div>`).join(""):`<div class="empty">Todavía no hay gastos registrados para este mes.</div>`;
   $("expenseList").querySelectorAll("[data-expense-delete]").forEach(el=>el.addEventListener("click",()=>{expenses=expenses.filter(x=>x.id!==el.dataset.expenseDelete);save();renderExpenses();}));
 }
+$("addStoreBtn").addEventListener("click",()=>{const name=prompt("Nombre de la nueva lista o tienda:");if(!name)return;const store=name.trim().toLocaleUpperCase("es");if(!store)return;if(stores.some(x=>x.toLocaleLowerCase("es")===store.toLocaleLowerCase("es"))){alert("Esa lista ya existe.");return;}stores.push(store);stores.sort((a,b)=>a.localeCompare(b,"es",{sensitivity:"base"}));activeStore=store;save();renderList();});
 $("addForm").addEventListener("submit",e=>{e.preventDefault();const name=$("productName").value.trim();if(!name)return;items.push({id:crypto.randomUUID(),store:activeStore,name,note:$("productNote").value.trim(),photo:photoData,done:false,createdAt:new Date().toISOString()});$("productName").value="";$("productNote").value="";$("productPhoto").value="";photoData="";$("photoHint").textContent="Puedes adjuntar una foto para identificar el producto.";save();renderList();});
 $("productPhoto").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;if(file.size>5*1024*1024){alert("La foto supera 5 MB. Elige una imagen más pequeña.");e.target.value="";return;}const reader=new FileReader();reader.onload=()=>{photoData=reader.result;$("photoHint").textContent="Foto preparada: "+file.name;};reader.readAsDataURL(file);});
 $("expenseForm").addEventListener("submit",e=>{e.preventDefault();const amount=Number($("expenseAmount").value);if(!(amount>0))return;expenses.push({id:crypto.randomUUID(),store:$("expenseStore").value,date:$("expenseDate").value,amount});$("expenseAmount").value="";$("monthFilter").value=$("expenseDate").value.slice(0,7);save();renderExpenses();});
 $("monthFilter").addEventListener("change",renderExpenses);
-document.querySelectorAll("[data-store]").forEach(btn=>btn.addEventListener("click",()=>{activeStore=btn.dataset.store;document.querySelectorAll("[data-store]").forEach(b=>b.classList.toggle("active",b===btn));renderList();}));
+
 document.querySelectorAll("[data-view]").forEach(btn=>btn.addEventListener("click",()=>{const view=btn.dataset.view;document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b===btn));$("listsView").classList.toggle("hidden",view!=="lists");$("expensesView").classList.toggle("hidden",view!=="expenses");if(view==="expenses")renderExpenses();}));
-$("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify({items,expenses},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="zerostress-shoping-copia.json";a.click();URL.revokeObjectURL(url);});
 function roundedRect(ctx,x,y,w,h,r,fill,stroke){
   const radius=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+radius,y);ctx.lineTo(x+w-radius,y);ctx.arcTo(x+w,y,x+w,y+radius,radius);ctx.lineTo(x+w,y+h-radius);ctx.arcTo(x+w,y+h,x+w-radius,y+h,radius);ctx.lineTo(x+radius,y+h);ctx.arcTo(x,y+h,x,y+h-radius,radius);ctx.lineTo(x,y+radius);ctx.arcTo(x,y,x+radius,y,radius);ctx.closePath();
   if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}
