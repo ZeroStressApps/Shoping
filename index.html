@@ -62,7 +62,7 @@
 <body>
 <header>
   <div class="brand"><img class="brand-logo" src="logo.png" alt="Logo ZeroStress Shoping"><div><h1>ZeroStress Shoping</h1>
-  <p>La compra compartida, sin tener que perseguir mensajes.</p></div></div>
+  <p>Tus listas de la compra.</p></div></div>
 </header>
 <main id="appMain">
   <div class="row" style="justify-content:space-between;margin-bottom:12px">
@@ -92,7 +92,7 @@
         <input id="productPhoto" type="file" accept="image/*" capture="environment" class="hidden">
         <button class="primary" type="submit">Añadir</button>
       </form>
-      <div class="hint" id="photoHint" style="margin-top:8px">Puedes adjuntar una foto para que Frank identifique el producto.</div>
+      <div class="hint" id="photoHint" style="margin-top:8px">Puedes adjuntar una foto para identificar el producto.</div>
       <div id="shoppingList" class="list"></div>
     </section>
   </section>
@@ -122,7 +122,7 @@
       <div id="expenseList"></div>
     </section>
   </section>
-  <p class="foot">Tus listas y gastos se guardan en este dispositivo. Puedes compartir la lista con Frank cuando vaya a comprar.</p>
+  <p class="foot">Tus listas y gastos se guardan en este dispositivo. Puedes compartir la lista con quien quieras enviando la imagen.</p>
 </main>
 <script>
 const $ = id => document.getElementById(id);
@@ -224,7 +224,7 @@ $("shareBtn").addEventListener("click",async()=>{
       await navigator.share({files:[file],title:`Lista de ${activeStore}`,text:`Lista de la compra · ${activeStore}`});
       hint.textContent="Imagen lista para compartir. Elige WhatsApp en el menú de compartir.";
     }else{
-      downloadBlob(blob,file.name);hint.textContent="Imagen descargada. Adjunta el PNG a WhatsApp para que Frank vea los productos y sus fotos.";
+      downloadBlob(blob,file.name);hint.textContent="Imagen descargada. Adjunta el PNG a WhatsApp para que quien reciba la lista vea los productos y sus fotos.";
     }
   }catch(err){
     if(err&&err.name==="AbortError"){hint.textContent="Compartición cancelada.";}else{hint.textContent="No se pudo preparar la imagen. Prueba con una lista más corta o exporta una copia.";console.error(err);}
